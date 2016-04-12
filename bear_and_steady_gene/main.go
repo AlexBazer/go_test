@@ -95,49 +95,37 @@ func main() {
 	fmt.Scan(&numSimbols, &str)
 
 	strMap := newMapSeq(str)
-	minLen := len(str)
-
+	// Find number of sparce symbols
 	diffSeq := strMap.generateSparseSeq()
 	if diffSeq.len() == 0 {
 		// The sequence already is steady
 		fmt.Println("0")
 		return
 	}
-
-	// Minimum possible seq length
-	minPossibleLen := diffSeq.len()
-	strLen := len(str)
-	// Create firsth boat sequence
-	// This sequence with minPossibleLen will be moving along seting sequence
-	boatSeq := newMapSeq(str[0:minPossibleLen])
-	trailSeq := make(mapSeq)
-	for i := 0; i < strLen-minPossibleLen; i++ {
-		if i > 0 && i < strLen-minPossibleLen-1 {
-			boatSeq.complementSymbol(str[i-1])
-			boatSeq.unionSymbol(str[i+minPossibleLen-1])
-		}
-		// Copy boat to trailSeq test against checkSeq
-		boatSeq.copyTo(trailSeq)
-		trailSeq.complement(diffSeq)
-
-		if trailSeq.checkSeq() {
-			// Minimal possible sequence is steady
-			fmt.Println(minPossibleLen)
-			return
-		}
-		// Widen trailSeq by one to strLen or to possible len(j-i+1) lower minLen
-		for j := i + minPossibleLen; j < strLen && j-i+1 < minLen; j++ {
-			trailSeq.complementSymbol(str[j])
-			if trailSeq.checkSeq() {
-				curLen := j - i + 1
-				// fmt.Println(curLen)
-				if curLen < minLen {
-					minLen = curLen
-				}
-				break
-			}
+	// Create boat seq that will flow from start to the end of genome
+	boatSeq := diffSeq.copy()
+	var minLen int
+	// find min from the start
+	for i := 0; i < len(str)-1; i++ {
+		boatSeq.complementSymbol(str[i])
+		if boatSeq.checkSeq() {
+			minLen = i + 1
+			break
 		}
 	}
 
+	var curI int
+	// While knowing the minLen for now, we can:
+	// 1.Delete one symbol from the tail of the boat and if seq is correct, decrement minLen
+	// 2.Add one symbol to the head of the boat
+	for curI+minLen < len(str) {
+		boatSeq.unionSymbol(str[curI])
+		if boatSeq.checkSeq() {
+			minLen--
+		} else {
+			boatSeq.complementSymbol(str[curI+minLen])
+		}
+		curI++
+	}
 	fmt.Println(minLen)
 }
