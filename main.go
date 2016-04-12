@@ -1,80 +1,14 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"math"
+)
 
 type mapSeq map[byte]int
 
-func (ms *mapSeq) copy() mapSeq {
-	ret := make(mapSeq)
-	for key, value := range *ms {
-		ret[key] = value
-	}
-	return ret
-}
-
-func (ms *mapSeq) update(with mapSeq) mapSeq {
-	ret := ms.copy()
-	for key, value := range with {
-		ret[key] += value
-	}
-	return ret
-}
-
-func (ms *mapSeq) len() int {
-	var seqLen int
-	for _, val := range *ms {
-		seqLen += val
-	}
-	return seqLen
-}
-
-func (ms mapSeq) compare(with mapSeq) bool {
-	for key, value := range ms {
-		withValue, exists := with[key]
-		if !exists || withValue != value {
-			return false
-		}
-	}
-
-	for key, value := range with {
-		msValue, exists := ms[key]
-		if !exists || msValue != value {
-			return false
-		}
-	}
-
-	return true
-}
-
-func main() {
-	var numSimbols int
-	var str string
-	fmt.Scan(&numSimbols, &str)
-
-	strMap := strToMap(str)
-	baseMap := getBaseTestSeq(strMap, numSimbols)
-	fmt.Println(baseMap.len(), testSeqInStr(baseMap, str))
-	return
-	if testSeqInStr(baseMap, str) {
-		fmt.Println("0")
-	} else {
-		testSeqs := getSeqs(strMap, baseMap)
-		var minSeqLen int
-		for i := 0; i < len(testSeqs); i++ {
-			if testSeqInStr(testSeqs[i], str) {
-				minSeqLen = testSeqs[i].len()
-				break
-			}
-		}
-		if minSeqLen > 0 {
-			fmt.Println(minSeqLen)
-		} else {
-			fmt.Println("BOOL Sheat!")
-		}
-	}
-}
-
-func strToMap(str string) mapSeq {
+func newMapSeq(str string) mapSeq {
+	// Create map sequence from string
 	retMap := make(mapSeq)
 	for i := 0; i < len(str); i++ {
 		retMap[str[i]]++
@@ -82,54 +16,153 @@ func strToMap(str string) mapSeq {
 	return retMap
 }
 
-func getBaseTestSeq(strMap mapSeq, length int) mapSeq {
+func (ms mapSeq) generateSparseSeq() mapSeq {
+	// Generates sequence with sparce genome codes
+	genomeCodes := []byte{'A', 'C', 'G', 'T'}
 	retMap := make(mapSeq)
-	maxNum := length / 4
+	maxNum := ms.len() / 4
 
-	for key, val := range strMap {
-		leftNum := val - maxNum
-		if leftNum > 0 {
-			retMap[key] = leftNum
+	for i := 0; i < len(genomeCodes); i++ {
+		value, exists := ms[genomeCodes[i]]
+		if exists && value-maxNum > 0 {
+			retMap[genomeCodes[i]] = value - maxNum
+		} else {
+			retMap[genomeCodes[i]] = 0
 		}
 	}
 	return retMap
 }
 
-func getSeqs(strMap, baseMap mapSeq) []mapSeq {
-	var ret []mapSeq
-	fullSeq := "ACGT"
-	for i := 1; i < len(fullSeq)+1; i++ {
-		for j := 0; j < len(fullSeq)-i+1; j++ {
-			if charInBase(strMap, baseMap, fullSeq[j:j+i]) {
-				ret = append(ret, baseMap.update(strToMap(fullSeq[j:j+i])))
-			}
-		}
+func (ms *mapSeq) copy() mapSeq {
+	// Make a copy of sequence
+	ret := make(mapSeq)
+	for key, value := range *ms {
+		ret[key] = value
 	}
 	return ret
 }
 
-func charInBase(strMap, baseMap mapSeq, subSeq string) bool {
-	subSeqMap := strToMap(subSeq)
-	for key, _ := range subSeqMap {
-		strValue := strMap[key]
-		_, baseExists := baseMap[key]
-		if strValue > 0 && baseExists {
+func (ms *mapSeq) len() int {
+	// Get sequence len
+	var seqLen int
+	for _, val := range *ms {
+		seqLen += int(math.Abs(float64(val)))
+	}
+	return seqLen
+}
+
+func (ms mapSeq) checkSeq() bool {
+	// Check if sequence does't have sparce genome codes
+	for _, value := range ms {
+		if value > 0 {
 			return false
 		}
 	}
 	return true
 }
 
-func testSeqInStr(seq mapSeq, str string) bool {
-	seqLen := seq.len()
-	for i := 0; i < len(str)-seqLen+1; i++ {
-		subSeq := strToMap(str[i : i+seqLen])
-		if seq.compare(subSeq) {
-			return true
+func (ms mapSeq) complement(with mapSeq) {
+	// Complement sequence with enother sequence
+	for key := range with {
+		withValue, exists := with[key]
+		if exists {
+			ms[key] = withValue - ms[key]
 		}
 	}
-	return false
 }
+
+func (ms mapSeq) complementSymbol(with byte) {
+	// Complement sequence with symbol
+	ms[with]--
+}
+
+func (ms mapSeq) unionSymbol(with byte) {
+	// Union sequence with symbol
+	ms[with]++
+}
+
+func main() {
+	var numSimbols int
+	var str string
+	fmt.Scan(&numSimbols, &str)
+
+	strMap := newMapSeq(str)
+	minLen := int(^uint(0) >> 1)
+
+	diffSeq := strMap.generateSparseSeq()
+	if diffSeq.len() == 0 {
+		// The sequence already is steady
+		fmt.Println("0")
+		return
+	}
+	// Minimum possible seq length
+	minPossibleLen := diffSeq.len()
+	// Create firsth boat sequence
+	// This sequence with minPossibleLen will be moving along seting sequence
+	boatSeq := newMapSeq(str[0:minPossibleLen])
+	for i := 0; i < len(str)-minPossibleLen; i++ {
+		if i > 0 && i < len(str)-minPossibleLen-1 {
+			boatSeq.complementSymbol(str[i-1])
+			boatSeq.unionSymbol(str[i+minPossibleLen-1])
+		}
+		// Copy boat to trailSeq test against checkSeq
+		trailSeq := boatSeq.copy()
+		trailSeq.complement(diffSeq)
+		if trailSeq.checkSeq() {
+			// Minimal possible sequence is steady
+			fmt.Println(minPossibleLen)
+			return
+		}
+		// Widen trailSeq by one to len(str) or to possible len(j-i+1) lower minLen
+		for j := i + diffSeq.len(); j < len(str) && j-i+1 < minLen; j++ {
+			trailSeq.complementSymbol(str[j])
+			if trailSeq.checkSeq() {
+				curLen := j - i + 1
+				if curLen < minLen {
+					minLen = curLen
+				}
+				break
+			}
+		}
+	}
+	fmt.Println(minLen)
+}
+
+// func getSeqs(strMap, baseMap mapSeq) []mapSeq {
+// 	var ret []mapSeq
+// 	fullSeq := "ACGT"
+// 	for i := 1; i < len(fullSeq)+1; i++ {
+// 		for j := 0; j < len(fullSeq)-i+1; j++ {
+// 			if charInBase(strMap, baseMap, fullSeq[j:j+i]) {
+// 				ret = append(ret, baseMap.update(strToMap(fullSeq[j:j+i])))
+// 			}
+// 		}
+// 	}
+// 	return ret
+// }
+
+// func charInBase(strMap, baseMap mapSeq, subSeq string) bool {
+// 	subSeqMap := strToMap(subSeq)
+// 	for key, _ := range subSeqMap {
+// 		strValue := strMap[key]
+// 		_, baseExists := baseMap[key]
+// 		if strValue > 0 && baseExists {
+// 			return false
+// 		}
+// 	}
+// 	return true
+// }
+//
+// func testSeqInStr(seq mapSeq, str string) bool {
+// 	seqLen := seq.len()
+// 	for i := 0; i < len(str)-seqLen+1; i++ {
+// 		subSeq := strToMap(str[i : i+seqLen])
+// 		if seq.compare(subSeq) {
+// 			return true
+// 		}
+// 	}
+// 	return false
+// }
 
 // func solve() {
 // 	var str string
