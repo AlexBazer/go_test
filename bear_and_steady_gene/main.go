@@ -43,6 +43,13 @@ func (ms *mapSeq) copy() mapSeq {
 	return ret
 }
 
+func (ms mapSeq) copyTo(to mapSeq) {
+	// Make a copy of sequence
+	for key, value := range ms {
+		to[key] = value
+	}
+}
+
 func (ms *mapSeq) len() int {
 	// Get sequence len
 	var seqLen int
@@ -88,7 +95,7 @@ func main() {
 	fmt.Scan(&numSimbols, &str)
 
 	strMap := newMapSeq(str)
-	minLen := int(^uint(0) >> 1)
+	minLen := len(str)
 
 	diffSeq := strMap.generateSparseSeq()
 	if diffSeq.len() == 0 {
@@ -96,29 +103,34 @@ func main() {
 		fmt.Println("0")
 		return
 	}
+
 	// Minimum possible seq length
 	minPossibleLen := diffSeq.len()
+	strLen := len(str)
 	// Create firsth boat sequence
 	// This sequence with minPossibleLen will be moving along seting sequence
 	boatSeq := newMapSeq(str[0:minPossibleLen])
-	for i := 0; i < len(str)-minPossibleLen; i++ {
-		if i > 0 && i < len(str)-minPossibleLen-1 {
+	trailSeq := make(mapSeq)
+	for i := 0; i < strLen-minPossibleLen; i++ {
+		if i > 0 && i < strLen-minPossibleLen-1 {
 			boatSeq.complementSymbol(str[i-1])
 			boatSeq.unionSymbol(str[i+minPossibleLen-1])
 		}
 		// Copy boat to trailSeq test against checkSeq
-		trailSeq := boatSeq.copy()
+		boatSeq.copyTo(trailSeq)
 		trailSeq.complement(diffSeq)
+
 		if trailSeq.checkSeq() {
 			// Minimal possible sequence is steady
 			fmt.Println(minPossibleLen)
 			return
 		}
-		// Widen trailSeq by one to len(str) or to possible len(j-i+1) lower minLen
-		for j := i + diffSeq.len(); j < len(str) && j-i+1 < minLen; j++ {
+		// Widen trailSeq by one to strLen or to possible len(j-i+1) lower minLen
+		for j := i + minPossibleLen; j < strLen && j-i+1 < minLen; j++ {
 			trailSeq.complementSymbol(str[j])
 			if trailSeq.checkSeq() {
 				curLen := j - i + 1
+				// fmt.Println(curLen)
 				if curLen < minLen {
 					minLen = curLen
 				}
@@ -126,5 +138,6 @@ func main() {
 			}
 		}
 	}
+
 	fmt.Println(minLen)
 }
