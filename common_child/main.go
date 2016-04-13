@@ -1,11 +1,33 @@
 package main
 
 import "fmt"
+
+// https://www.hackerrank.com/challenges/common-child
+
 func main() {
     var str1, str2 string
 
     fmt.Scan(&str1, &str2)
     fmt.Println(findMaxSeqLen(str1, str2))
+}
+
+func findMaxLen(str1, str2 string)int{
+    i := 0
+    j := 0
+    var max int
+
+    for i<str{
+        for j>0{
+            if str1[i] == str2[j]{
+                max ++
+                i--
+                j--
+            }
+
+        }
+    }
+
+    return max
 }
 
 func findMaxSeqLen(str1, str2 string) int{
